@@ -8,11 +8,7 @@ import (
 	strconv "strconv"
 )
 
-type Todo struct {
-	ID   int    `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-}
+// Passed to createTodo to create a new todo
 type TodoInput struct {
 	Text string `json:"text"`
 	Done *bool  `json:"done"`
@@ -22,12 +18,12 @@ type Role string
 
 const (
 	RoleAdmin Role = "ADMIN"
-	RoleUser  Role = "USER"
+	RoleOwner Role = "OWNER"
 )
 
 func (e Role) IsValid() bool {
 	switch e {
-	case RoleAdmin, RoleUser:
+	case RoleAdmin, RoleOwner:
 		return true
 	}
 	return false

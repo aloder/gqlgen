@@ -24,3 +24,8 @@ If you cant find what your looking for, maybe the [examples](https://github.com/
 ## Getting help
 
 If you think you've found bug, or something isnt behaving the way you think it should please raise an [issue](https://github.com/99designs/gqlgen/issues) on github.  
+
+
+## Talks
+
+ - [Christopher Biscardi @ Gophercon UK 2018](https://youtu.be/FdURVezcdcw) 

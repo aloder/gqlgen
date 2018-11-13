@@ -19,8 +19,8 @@ type Build struct {
 	QueryRoot        *Object
 	MutationRoot     *Object
 	SubscriptionRoot *Object
-	SchemaRaw        string
-	SchemaFilename   string
+	SchemaRaw        map[string]string
+	SchemaFilename   SchemaFilenames
 	Directives       []*Directive
 }
 
@@ -111,6 +111,13 @@ func (cfg *Config) server(destDir string) *ServerBuild {
 	imports := buildImports(NamedTypes{}, destDir)
 	imports.add(cfg.Exec.ImportPath())
 	imports.add(cfg.Resolver.ImportPath())
+
+	// extra imports only used by the server template
+	imports.add("context")
+	imports.add("log")
+	imports.add("net/http")
+	imports.add("os")
+	imports.add("github.com/99designs/gqlgen/handler")
 
 	return &ServerBuild{
 		PackageName:         cfg.Resolver.Package,

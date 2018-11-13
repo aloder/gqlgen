@@ -14,6 +14,7 @@ const (
 	startMsg          = "start"           // Client -> Server
 	connectionAckMsg  = "connection_ack"  // Server -> Client
 	dataMsg           = "data"            // Server -> Client
+	errorMsg          = "error"           // Server -> Client
 )
 
 type operationMessage struct {
@@ -37,6 +38,10 @@ func errorSubscription(err error) *Subscription {
 }
 
 func (p *Client) Websocket(query string, options ...Option) *Subscription {
+	return p.WebsocketWithPayload(query, nil, options...)
+}
+
+func (p *Client) WebsocketWithPayload(query string, initPayload map[string]interface{}, options ...Option) *Subscription {
 	r := p.mkRequest(query, options...)
 	requestBody, err := json.Marshal(r)
 	if err != nil {
@@ -51,7 +56,15 @@ func (p *Client) Websocket(query string, options ...Option) *Subscription {
 		return errorSubscription(fmt.Errorf("dial: %s", err.Error()))
 	}
 
-	if err = c.WriteJSON(operationMessage{Type: connectionInitMsg}); err != nil {
+	initMessage := operationMessage{Type: connectionInitMsg}
+	if initPayload != nil {
+		initMessage.Payload, err = json.Marshal(initPayload)
+		if err != nil {
+			return errorSubscription(fmt.Errorf("parse payload: %s", err.Error()))
+		}
+	}
+
+	if err = c.WriteJSON(initMessage); err != nil {
 		return errorSubscription(fmt.Errorf("init: %s", err.Error()))
 	}
 
@@ -73,7 +86,11 @@ func (p *Client) Websocket(query string, options ...Option) *Subscription {
 			var op operationMessage
 			c.ReadJSON(&op)
 			if op.Type != dataMsg {
-				return fmt.Errorf("expected data message, got %#v", op)
+				if op.Type == errorMsg {
+					return fmt.Errorf(string(op.Payload))
+				} else {
+					return fmt.Errorf("expected data message, got %#v", op)
+				}
 			}
 
 			respDataRaw := map[string]interface{}{}
@@ -84,7 +101,7 @@ func (p *Client) Websocket(query string, options ...Option) *Subscription {
 
 			if respDataRaw["errors"] != nil {
 				var errs []*gqlerror.Error
-				if err = unpack(respDataRaw["errors"], errs); err != nil {
+				if err = unpack(respDataRaw["errors"], &errs); err != nil {
 					return err
 				}
 				if len(errs) > 0 {

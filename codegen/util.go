@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 	"go/types"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -104,19 +105,55 @@ func findMethod(typ *types.Named, name string) *types.Func {
 	return nil
 }
 
-func findField(typ *types.Struct, name string) *types.Var {
+func equalFieldName(source, target string) bool {
+	source = strings.Replace(source, "_", "", -1)
+	target = strings.Replace(target, "_", "", -1)
+	return strings.EqualFold(source, target)
+}
+
+// findField attempts to match the name to a struct field with the following
+// priorites:
+// 1. If struct tag is passed then struct tag has highest priority
+// 2. Field in an embedded struct
+// 3. Actual Field name
+func findField(typ *types.Struct, name, structTag string) (*types.Var, error) {
+	var foundField *types.Var
+	foundFieldWasTag := false
+
 	for i := 0; i < typ.NumFields(); i++ {
 		field := typ.Field(i)
-		if field.Anonymous() {
-			if named, ok := field.Type().(*types.Struct); ok {
-				if f := findField(named, name); f != nil {
-					return f
+
+		if structTag != "" {
+			tags := reflect.StructTag(typ.Tag(i))
+			if val, ok := tags.Lookup(structTag); ok {
+				if equalFieldName(val, name) {
+					if foundField != nil && foundFieldWasTag {
+						return nil, errors.Errorf("tag %s is ambigious; multiple fields have the same tag value of %s", structTag, val)
+					}
+
+					foundField = field
+					foundFieldWasTag = true
 				}
 			}
+		}
 
-			if named, ok := field.Type().Underlying().(*types.Struct); ok {
-				if f := findField(named, name); f != nil {
-					return f
+		if field.Anonymous() {
+
+			fieldType := field.Type()
+
+			if ptr, ok := fieldType.(*types.Pointer); ok {
+				fieldType = ptr.Elem()
+			}
+
+			// Type.Underlying() returns itself for all types except types.Named, where it returns a struct type.
+			// It should be safe to always call.
+			if named, ok := fieldType.Underlying().(*types.Struct); ok {
+				f, err := findField(named, name, structTag)
+				if err != nil && !strings.HasPrefix(err.Error(), "no field named") {
+					return nil, err
+				}
+				if f != nil && foundField == nil {
+					foundField = f
 				}
 			}
 		}
@@ -125,11 +162,16 @@ func findField(typ *types.Struct, name string) *types.Var {
 			continue
 		}
 
-		if strings.EqualFold(field.Name(), name) {
-			return field
+		if equalFieldName(field.Name(), name) && foundField == nil { // aqui!
+			foundField = field
 		}
 	}
-	return nil
+
+	if foundField == nil {
+		return nil, fmt.Errorf("no field named %s", name)
+	}
+
+	return foundField, nil
 }
 
 type BindError struct {
@@ -161,10 +203,14 @@ func (b BindErrors) Error() string {
 	return strings.Join(errs, "\n\n")
 }
 
-func bindObject(t types.Type, object *Object, imports *Imports) BindErrors {
+func bindObject(t types.Type, object *Object, imports *Imports, structTag string) BindErrors {
 	var errs BindErrors
 	for i := range object.Fields {
 		field := &object.Fields[i]
+
+		if field.ForceResolver {
+			continue
+		}
 
 		// first try binding to a method
 		methodErr := bindMethod(imports, t, field)
@@ -173,7 +219,7 @@ func bindObject(t types.Type, object *Object, imports *Imports) BindErrors {
 		}
 
 		// otherwise try binding to a var
-		varErr := bindVar(imports, t, field)
+		varErr := bindVar(imports, t, field, structTag)
 
 		if varErr != nil {
 			errs = append(errs, BindError{
@@ -227,7 +273,7 @@ func bindMethod(imports *Imports, t types.Type, field *Field) error {
 	return nil
 }
 
-func bindVar(imports *Imports, t types.Type, field *Field) error {
+func bindVar(imports *Imports, t types.Type, field *Field, structTag string) error {
 	underlying, ok := t.Underlying().(*types.Struct)
 	if !ok {
 		return fmt.Errorf("not a struct")
@@ -237,9 +283,9 @@ func bindVar(imports *Imports, t types.Type, field *Field) error {
 	if field.GoFieldName != "" {
 		goName = field.GoFieldName
 	}
-	structField := findField(underlying, goName)
-	if structField == nil {
-		return fmt.Errorf("no field named %s", field.GQLName)
+	structField, err := findField(underlying, goName, structTag)
+	if err != nil {
+		return err
 	}
 
 	if err := validateTypeBinding(imports, field, structField.Type()); err != nil {
@@ -261,7 +307,9 @@ nextArg:
 		param := params.At(j)
 		for _, oldArg := range field.Args {
 			if strings.EqualFold(oldArg.GQLName, param.Name()) {
-				oldArg.Type.Modifiers = modifiersFromGoType(param.Type())
+				if !field.ForceResolver {
+					oldArg.Type.Modifiers = modifiersFromGoType(param.Type())
+				}
 				newArgs = append(newArgs, oldArg)
 				continue nextArg
 			}

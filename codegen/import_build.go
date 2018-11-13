@@ -5,7 +5,14 @@ import (
 	"go/build"
 	"sort"
 	"strconv"
-	"strings"
+
+	// Import and ignore the ambient imports listed below so dependency managers
+	// don't prune unused code for us. Both lists should be kept in sync.
+	_ "github.com/99designs/gqlgen/graphql"
+	_ "github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/99designs/gqlgen/internal/gopath"
+	_ "github.com/vektah/gqlparser"
+	_ "github.com/vektah/gqlparser/ast"
 )
 
 // These imports are referenced by the generated code, and are assumed to have the
@@ -19,6 +26,7 @@ var ambientImports = []string{
 	"time",
 	"sync",
 	"errors",
+	"bytes",
 
 	"github.com/vektah/gqlparser",
 	"github.com/vektah/gqlparser/ast",
@@ -48,7 +56,8 @@ func (s *Imports) add(path string) *Import {
 		return nil
 	}
 
-	if stringHasSuffixFold(s.destDir, path) {
+	// if we are referencing our own package we dont need an import
+	if gopath.MustDir2Import(s.destDir) == path {
 		return nil
 	}
 
@@ -68,10 +77,6 @@ func (s *Imports) add(path string) *Import {
 	s.imports = append(s.imports, imp)
 
 	return imp
-}
-
-func stringHasSuffixFold(s, suffix string) bool {
-	return len(s) >= len(suffix) && strings.EqualFold(s[len(s)-len(suffix):], suffix)
 }
 
 func (s Imports) finalize() []*Import {

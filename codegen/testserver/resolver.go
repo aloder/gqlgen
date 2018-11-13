@@ -11,8 +11,23 @@ import (
 
 type Resolver struct{}
 
+func (r *Resolver) ForcedResolver() ForcedResolverResolver {
+	return &forcedResolverResolver{r}
+}
 func (r *Resolver) Query() QueryResolver {
 	return &queryResolver{r}
+}
+func (r *Resolver) Subscription() SubscriptionResolver {
+	return &subscriptionResolver{r}
+}
+func (r *Resolver) User() UserResolver {
+	return &userResolver{r}
+}
+
+type forcedResolverResolver struct{ *Resolver }
+
+func (r *forcedResolverResolver) Field(ctx context.Context, obj *ForcedResolver) (*Circle, error) {
+	panic("not implemented")
 }
 
 type queryResolver struct{ *Resolver }
@@ -41,6 +56,33 @@ func (r *queryResolver) Keywords(ctx context.Context, input *Keywords) (bool, er
 func (r *queryResolver) Shapes(ctx context.Context) ([]*Shape, error) {
 	panic("not implemented")
 }
+func (r *queryResolver) ErrorBubble(ctx context.Context) (*Error, error) {
+	panic("not implemented")
+}
+func (r *queryResolver) Valid(ctx context.Context) (string, error) {
+	panic("not implemented")
+}
+func (r *queryResolver) User(ctx context.Context, id int) (User, error) {
+	panic("not implemented")
+}
+func (r *queryResolver) NullableArg(ctx context.Context, arg *int) (*string, error) {
+	panic("not implemented")
+}
 func (r *queryResolver) KeywordArgs(ctx context.Context, breakArg string, defaultArg string, funcArg string, interfaceArg string, selectArg string, caseArg string, deferArg string, goArg string, mapArg string, structArg string, chanArg string, elseArg string, gotoArg string, packageArg string, switchArg string, constArg string, fallthroughArg string, ifArg string, rangeArg string, typeArg string, continueArg string, forArg string, importArg string, returnArg string, varArg string) (bool, error) {
+	panic("not implemented")
+}
+
+type subscriptionResolver struct{ *Resolver }
+
+func (r *subscriptionResolver) Updated(ctx context.Context) (<-chan string, error) {
+	panic("not implemented")
+}
+func (r *subscriptionResolver) InitPayload(ctx context.Context) (<-chan string, error) {
+	panic("not implemented")
+}
+
+type userResolver struct{ *Resolver }
+
+func (r *userResolver) Friends(ctx context.Context, obj *User) ([]User, error) {
 	panic("not implemented")
 }

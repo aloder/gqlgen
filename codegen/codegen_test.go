@@ -16,11 +16,13 @@ func TestGenerateServer(t *testing.T) {
 	}
 	type User {
 		id: Int
+		fist_name: String
 	}
 `
 	serverFilename := "gen/" + name + "/server/server.go"
 	cfg := Config{
-		SchemaStr: schema,
+		SchemaFilename: SchemaFilenames{"schema.graphql"},
+		SchemaStr: map[string]string{"schema.graphql": schema},
 		Exec:      PackageConfig{Filename: "gen/" + name + "/exec.go"},
 		Model:     PackageConfig{Filename: "gen/" + name + "/model.go"},
 		Resolver:  PackageConfig{Filename: "gen/" + name + "/resolver.go", Type: "Resolver"},

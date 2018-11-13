@@ -7,6 +7,27 @@ type Query {
     nestedOutputs: [[OuterObject]]
     keywords(input: Keywords): Boolean!
     shapes: [Shape]
+    errorBubble: Error
+    valid: String!
+    user(id: Int!): User!
+    nullableArg(arg: Int = 123): String
+}
+
+type Subscription {
+    updated: String!
+    initPayload: String!
+}
+
+type User {
+    id: Int!
+    friends: [User!]!
+}
+
+type Error {
+    id: ID!
+    errorOnNonRequiredField: String
+    errorOnRequiredField: String!
+    nilOnRequiredField: String!
 }
 
 type InvalidIdentifier {
@@ -113,3 +134,12 @@ type Rectangle implements Shape {
     area: Float
 }
 union ShapeUnion = Circle | Rectangle
+
+type ForcedResolver {
+    field: Circle
+}
+
+type EmbeddedPointer {
+    ID: String
+    Title: String
+}

@@ -10,8 +10,18 @@ gqlgen can be configured using a `gqlgen.yml` file, by default it will be loaded
 
 Example:
 ```yml
+# You can pass a single schema file
 schema: schema.graphql
 
+# Or multiple files
+schema:
+ - schema.graphql
+ - user.graphql
+ 
+# Or you can use globs
+schema: 
+ - "*.graphql"
+ 
 # Let gqlgen know where to put the generated server
 exec:
   filename: graph/generated/generated.go
@@ -26,6 +36,9 @@ model:
 resolver:
   filename: resolver.go # where to write them
   type: Resolver  # whats the resolver root implementation type called?
+
+# Optional, turns on binding to field names by tag provided
+struct_tag: json
 
 # Tell gqlgen about any existing models you want to reuse for
 # graphql. These normally come from the db or a remote api.

@@ -1,3 +1,6 @@
+"This directive does magical things"
+directive @magic(kind: Int) on FIELD_DEFINITION
+
 type Element {
     child: Element!
     error: Boolean!
@@ -20,11 +23,6 @@ input DateFilter {
     value: String!
     timezone: String = "UTC"
     op: DATE_FILTER_OP = EQ
-}
-
-type User {
-    name: String!
-    likes: [String!]!
 }
 
 type Viewer {
